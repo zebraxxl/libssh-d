@@ -1,0 +1,31 @@
+{
+    "name": "libssh-d-examples",
+    "authors": [
+        "Artem Pryanichnikov"
+    ],
+    "description": "D Programming Language binding for libssh: mulitplatform library implementing the SSHv2 and SSHv1 protocol on client and server side.",
+    "license": "LGPL",
+    "targetType": "executable",
+    "sourcePaths": [ "./common/" ],
+    "libs": ["libssh"],
+
+    "dependencies": {
+        "libssh-d": "*"
+    },
+
+    "configurations": [
+        {
+            "name": "exec",
+            "sourcePaths": [ "./exec/" ],
+            "targetName": "libssh-example-exec"
+        }, {
+            "name": "scp",
+            "sourcePaths": [ "./scp/" ],
+            "targetName": "libssh-example-scp"
+        }, {
+            "name": "proxy",
+            "sourcePaths": [ "./proxy/" ],
+            "targetName": "libssh-example-proxy"
+        }
+    ]
+}

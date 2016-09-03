@@ -5,3 +5,7 @@ __dummy.html
 *.obj
 *.a
 dub.userprefs
+examples/.project
+examples/libssh-d-examples-exec
+examples/libssh-d-examples-scp
+examples/libssh-d-examples-proxy
