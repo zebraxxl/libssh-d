@@ -1,0 +1,9 @@
+{
+    "name": "libssh-d",
+    "authors": [
+        "Artem Pryanichnikov"
+    ],
+    "description": "D Programming Language binding for libssh: mulitplatform library implementing the SSHv2 and SSHv1 protocol on client and server side.",
+    "license": "LGPL",
+    "targetType": "library"
+}
