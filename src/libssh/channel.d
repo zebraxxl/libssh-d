@@ -662,7 +662,7 @@ class SSHChannel : Disposable {
 
         auto rc = ssh_channel_select(forReadPtr, forWritePtr, forExceptPtr, &timeoutVal);
 
-        if (rc == ssh_error_types_e.SSH_EINTR) {
+        if (rc == ssh_error_types_e.SSH_EINTR || rc == SSH_AGAIN) {
             return false;
         }
         checkForRCError(rc, rc);
