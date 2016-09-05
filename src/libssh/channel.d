@@ -1,6 +1,8 @@
 ﻿module libssh.channel;
 
 import core.time;
+import std.algorithm.searching;
+import std.algorithm.mutation;
 
 import libssh.c_bindings.libssh;
 import libssh.c_bindings.server;
@@ -9,6 +11,34 @@ import libssh.c_bindings.ctypes;
 import libssh.errors;
 import libssh.utils;
 import libssh.session;
+
+class SSHChannelSet {
+    this() {
+    }
+
+    void add(SSHChannel channel) {
+        if (!this._channels.canFind(channel)) {
+            this._channels ~= channel;
+        }
+    }
+
+    void remove(SSHChannel channel) {
+        this._channels = std.algorithm.mutation.remove!(a => a == channel)(this._channels);
+    }
+
+    bool isSet(SSHChannel channel) {
+        return this._settedChannels.canFind(channel._channel);
+    }
+
+    void reset() {
+        this._settedChannels = [];
+    }
+
+    private {
+        SSHChannel[] _channels = [];
+        ssh_channel[] _settedChannels = [];
+    }
+}
 
 class SSHChannel : Disposable {
     enum PollEof = int.min;
@@ -592,75 +622,77 @@ class SSHChannel : Disposable {
     /**
      * return false if the select(2) syscall was interrupted, then relaunch the function.
      * */
-//    static bool select(ref SSHChannel[] readChans, ref SSHChannel[] writeChans, 
-//        ref SSHChannel[] exceptChans, Duration timeout) {
-//
-//        ssh_channel[] read = new ssh_channel[readChans !is null ? readChans.length + 1 : 1];
-//        ssh_channel[] write = new ssh_channel[writeChans !is null ? writeChans.length + 1 : 1];
-//        ssh_channel[] except = new ssh_channel[exceptChans !is null ? exceptChans.length + 1 : 1];
-//
-//        if (readChans !is null) {
-//            for (auto i = 0; i < readChans.length; i++) {
-//                read[i] = readChans[i]._channel;
-//            }
-//            read[readChans.length] = null;
-//        }
-//
-//        if (writeChans !is null) {
-//            for (auto i = 0; i < writeChans.length; i++) {
-//                write[i] = writeChans[i]._channel;
-//            }
-//            write[writeChans.length] = null;
-//        }
-//
-//        if (exceptChans !is null) {
-//            for (auto i = 0; i < exceptChans.length; i++) {
-//                except[i] = exceptChans[i]._channel;
-//            }
-//            except[exceptChans.length] = null;
-//        }
-//
-//        timeval timeoutVal;
-//        long secsVal, usecsVal;
-//        timeout.split!("seconds", "usecs")(secsVal, usecsVal);
-//
-//        timeoutVal.tv_sec = secsVal;
-//        timeoutVal.tv_usec = usecsVal;
-//
-//        auto rc = ssh_channel_select(read.ptr, write.ptr, except.ptr, &timeoutVal);
-//        if (rc == ssh_error_types_e.SSH_EINTR) {
-//            return false;
-//        }
-//        if (rc != SSH_OK) {
-//            throw new SSHException(this._parent._session);
-//        }
-//
-//        if (readChans !is null) {
-//            size_t i = 0;
-//            while 
-//
-//            for (auto i = 0; i < readChans.length; i++) {
-//                read[i] = readChans[i]._channel;
-//            }
-//            read[readChans.length] = null;
-//        }
-//        
-//        if (writeChans !is null) {
-//            for (auto i = 0; i < writeChans.length; i++) {
-//                write[i] = writeChans[i]._channel;
-//            }
-//            write[writeChans.length] = null;
-//        }
-//        
-//        if (exceptChans !is null) {
-//            for (auto i = 0; i < exceptChans.length; i++) {
-//                except[i] = exceptChans[i]._channel;
-//            }
-//            except[exceptChans.length] = null;
-//        }
-//
-//        return true;
-//    }
+    static bool select(SSHChannelSet readChans, SSHChannelSet writeChans, 
+            SSHChannelSet exceptChans, Duration timeout) {
+
+        timeval timeoutVal;
+        timeout.split!("seconds", "usecs")(timeoutVal.tv_sec, timeoutVal.tv_usec);
+
+        ssh_channel[] forRead = null;
+        ssh_channel[] forWrite = null;
+        ssh_channel[] forExcept = null;
+       
+        if (readChans !is null && readChans._channels.length > 0) {
+            forRead = new ssh_channel[readChans._channels.length + 1];
+            for (auto i = 0; i < readChans._channels.length; i++) {
+                forRead[i] = readChans._channels[i]._channel;
+            }
+            forRead[readChans._channels.length] = null;
+        }
+
+        if (writeChans !is null && writeChans._channels.length > 0) {
+            forWrite = new ssh_channel[writeChans._channels.length + 1];
+            for (auto i = 0; i < writeChans._channels.length; i++) {
+                forWrite[i] = writeChans._channels[i]._channel;
+            }
+            forWrite[writeChans._channels.length] = null;
+        }
+
+        if (exceptChans !is null && exceptChans._channels.length > 0) {
+            forExcept = new ssh_channel[exceptChans._channels.length + 1];
+            for (auto i = 0; i < exceptChans._channels.length; i++) {
+                forExcept[i] = exceptChans._channels[i]._channel;
+            }
+            forExcept[exceptChans._channels.length] = null;
+        }
+
+        ssh_channel* forReadPtr = forRead !is null ? forRead.ptr : null;
+        ssh_channel* forWritePtr = forWrite !is null ? forWrite.ptr : null;
+        ssh_channel* forExceptPtr = forExcept !is null ? forExcept.ptr : null;
+
+        auto rc = ssh_channel_select(forReadPtr, forWritePtr, forExceptPtr, &timeoutVal);
+
+        if (rc == ssh_error_types_e.SSH_EINTR) {
+            return false;
+        }
+        checkForRCError(rc, rc);
+
+        size_t i = 0;
+        if (forRead !is null) {
+            while (forRead[i] !is null) {
+                readChans._settedChannels ~= forRead[i];
+                i += 1;
+            }
+        }
+
+        if (forWrite !is null) {
+            i = 0;
+            while (forWrite[i] !is null) {
+                writeChans._settedChannels ~= forWrite[i];
+                i += 1;
+            }
+        }
+
+        if (forExcept !is null) {
+            i = 0;
+            while (forExcept[i] !is null) {
+                exceptChans._settedChannels ~= forExcept[i];
+                i += 1;
+            }
+        }
+
+        return true;
+    }
 
     ~this() {
         this._dispose(true);
