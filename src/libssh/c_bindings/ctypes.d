@@ -1,11 +1,26 @@
 ﻿module libssh.c_bindings.ctypes;
 
-import core.sys.posix.sys.types;
-import core.sys.posix.sys.time;
-import core.sys.posix.sys.select;
+alias suseconds_t = long;
+alias time_t = long;
+alias c_long = long;
 
-alias timeval = core.sys.posix.sys.time.timeval;
-alias mode_t = core.sys.posix.sys.types.mode_t;
-alias fd_set = core.sys.posix.sys.select.fd_set;
-alias uid_t = core.sys.posix.sys.types.uid_t;
-alias gid_t = core.sys.posix.sys.types.gid_t;
+
+alias mode_t = uint;
+alias uid_t = uint;
+alias gid_t = uint;
+
+enum FD_SETSIZE = 1024;
+enum __NFDBITS = 8 * c_long.sizeof;
+
+version(Posix) {
+    struct timeval {
+        time_t tv_sec;
+        suseconds_t tv_usec;
+    }
+
+    struct fd_set {
+        long[FD_SETSIZE / __NFDBITS] fds_bits;
+    }
+} else {
+    public import core.sys.windows.winsock2 : timeval;
+}
