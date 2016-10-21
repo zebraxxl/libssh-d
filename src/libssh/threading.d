@@ -85,7 +85,7 @@ private {
 
         // Why? Why not =) I have not better idea to cast thread id to uint from ulong.
         // As for me - this variant is better than just remove hight part
-        return cast(uint) (((id & 0xffffffff00000000L) >> 32) ^ (id & 0xffffffff));
+        return cast(uint) (((cast(ulong)(id) & 0xffffffff00000000L) >> 32) ^ (cast(uint)(id) & 0xffffffff));
     }
 
     __gshared ssh_threads_callbacks_struct dlangThreadsCallbacks = {
